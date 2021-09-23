@@ -7,4 +7,4 @@
 - [] Improve the smart contract to allow to create new bids from UI
 
 # Preview
-![Preview](./docs/preview.png)
+![Preview](./docs/preview-02.png)
