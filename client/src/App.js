@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import AuctionContract from "./contracts/Auction.json";
 import getWeb3 from "./getWeb3";
+import ErrorModal from "./components/ErrorModal";
 import {
   Button,
   Container,
@@ -13,23 +14,31 @@ import {
 } from "semantic-ui-react";
 
 const App = () => {
+  // initial state vars
   const [localWeb3, setLocalWeb3] = useState(null);
   const [account, setAccount] = useState(null);
-  const [allUserAccounts, setAllUserAccounts] = useState(null);
   const [contract, setContract] = useState(null);
-  const [bidAmount, setBidAmount] = useState(1);
 
-  // contract methods
+  // contract interaction state vars
   const [beneficiary, setBeneficiary] = useState(0);
   const [auctionEndTime, setAuctionEndTime] = useState(null);
   const [pendingBalance, setPendingBalance] = useState(null);
   const [contractAccountBalance, setContractAccountBalance] = useState(null);
   const [highestBid, setHighestBid] = useState(null);
+  const [bidAmount, setBidAmount] = useState(1);
+
+  // miscellaneous state vars
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(false);
 
   // ### Actions
-  const switchAccount = async () => {
+  const refreshAccount = async () => {
     const [_account] = await localWeb3.eth.getAccounts();
     setAccount(_account);
+
+    handleClickGetContractAccountBalance();
+    handleClickGetPendingBalance();
+    handleClickGetHighestBid();
   };
 
   const connectWallet = async () => {
@@ -58,15 +67,10 @@ const App = () => {
       // get auction end time
       const _auctionEndTime = await instance.methods.auctionEndTime().call();
       setAuctionEndTime(_auctionEndTime);
-
-      // Set web3, accounts, and contract to the state, and then proceed with an
-      // example of interacting with the contract's methods.
-      // runExample();
     } catch (error) {
       // Catch any errors for any of the above operations.
-      alert(
-        `Failed to load web3, accounts, or contract. Check console for details.`
-      );
+      setErrorMessage(error.message);
+      setShowError(true);
       console.error(error);
     }
   };
@@ -77,7 +81,8 @@ const App = () => {
     try {
       await contract.methods.bid().send({ from: account, value: bidAmount });
     } catch (err) {
-      alert(err.message);
+      setErrorMessage(err.message);
+      setShowError(true);
     }
   };
 
@@ -86,7 +91,8 @@ const App = () => {
       await contract.methods.withdraw().send({ from: account });
       handleClickGetPendingBalance();
     } catch (err) {
-      alert(err.message);
+      setErrorMessage(err.message);
+      setShowError(true);
     }
   };
 
@@ -94,7 +100,8 @@ const App = () => {
     try {
       await contract.methods.endAuction().send({ from: account });
     } catch (err) {
-      alert(err.message);
+      setErrorMessage(err.message);
+      setShowError(true);
     }
   };
 
@@ -145,6 +152,7 @@ const App = () => {
 
   return (
     <Container text style={{ marginTop: "2rem" }}>
+      <ErrorModal open={showError} setOpen={setShowError} message={errorMessage} />
       <Segment clearing>
         <Header as="h2" floated="right">
           Welcome to this crypto bid!
@@ -156,24 +164,24 @@ const App = () => {
           <p>{beneficiary}</p>
         </Message>
         <Divider clearing />
-        {account === beneficiary && (
-          <div>
-            <Button color="red" onClick={handleClickEndAuction}>
-              End Auction
-            </Button>
-          </div>
-        )}
         <Message floating>
           <Message.Header>You're using this Account</Message.Header>
           <p>{account}</p>
         </Message>
-        <Button
-          color="teal"
-          floated="right"
-          onClick={switchAccount}
-          icon="refresh"
-          content="Refresh Account"
-        ></Button>
+        <Segment.Inline>
+          {account === beneficiary && (
+              <Button color="red" onClick={handleClickEndAuction}>
+                End Auction
+              </Button>
+          )}
+          <Button
+            color="teal"
+            floated="right"
+            onClick={refreshAccount}
+            icon="refresh"
+            content="Refresh"
+          ></Button>
+        </Segment.Inline>
       </Segment>
       <Segment clearing>
         <Message floating>
@@ -191,6 +199,7 @@ const App = () => {
               content: "Make a bid",
               onClick: bid,
               color: "green",
+              icon: "usd",
             }}
             actionPosition="left"
           />
